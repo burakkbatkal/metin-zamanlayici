@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Metin Zamanlayıcı</title>
+<style>
+:root{--bg:#eef1f7;--card:#fff;--tx:#141a2b;--mut:#5d6783;--bd:#d6dbe8;--c1:#0369a1;--c2:#be185d;--c3:#b45309;--c4:#6d28d9;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1420;--card:#182033;--tx:#e8ecf5;--mut:#8d98b3;--bd:#2a3550;--c1:#38bdf8;--c2:#f472b6;--c3:#fbbf24;--c4:#a78bfa}}
+:root[data-theme="dark"]{--bg:#0f1420;--card:#182033;--tx:#e8ecf5;--mut:#8d98b3;--bd:#2a3550;--c1:#38bdf8;--c2:#f472b6;--c3:#fbbf24;--c4:#a78bfa}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+main{max-width:920px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.5rem;margin:0 0 4px}
+.sub{color:var(--mut);margin:0 0 16px;max-width:65ch}
+.next{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:16px;font-size:1.1rem}
+.next b{font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--bd);border-top:4px solid var(--cc);border-radius:10px;padding:14px;position:relative}
+.card.soon{outline:2px solid var(--cc)}
+.card.urgent{outline:3px solid var(--cc);animation:pulse .8s ease-in-out infinite alternate}
+@keyframes pulse{from{background:var(--card)}to{background:color-mix(in srgb,var(--cc) 22%,var(--card))}}
+@media (prefers-reduced-motion:reduce){.card.urgent{animation:none}}
+.top{display:flex;justify-content:space-between;align-items:baseline}
+.top b{color:var(--cc);font-size:1.15rem}
+.rem{font-size:2.4rem;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.at{color:var(--mut);font-size:.9rem;margin:2px 0 8px;font-variant-numeric:tabular-nums}
+.bar{height:6px;background:var(--bd);border-radius:3px;overflow:hidden;margin-bottom:10px}
+.bar i{display:block;height:100%;width:0;background:var(--cc)}
+input,button{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:7px 10px}
+input[type=time]{width:100%;margin-bottom:8px}
+button{cursor:pointer}
+button:hover{border-color:var(--mut)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--tx);outline-offset:2px}
+.row{display:flex;gap:8px}
+.row button:first-child{flex:1}
+.set{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--bd);color:var(--mut)}
+.set input[type=number]{width:82px}
+
+.log{font-size:.82rem;color:var(--mut);margin-top:8px;font-variant-numeric:tabular-nums;max-height:120px;overflow:auto}
+.log b{color:var(--tx)}
+.cal{margin-top:6px;font-size:.85rem}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;display:none;max-width:90vw}
+</style>
+</head>
+<body>
+<main>
+  <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v5 · Tuttu butonu</small></h1>
+  <p class="sub">Her kanal için metnin çıktığı bir saati gir. Varsayılan döngü 7 dk 45 sn (7.75 dk) olarak ayarlıdır; metin çıkmadan önce ve çıktığında sesli uyarı verir. Sekme açık kalmalı. Sapmayı ölçmek için: saat tuttuysa "Tuttu"ya, farklı çıktıysa çıktığı anda "Şimdi çıktı"ya bas; sapma ve gerçek döngü kartta görünür.</p>
+  <div class="next" id="next">Henüz saat girilmedi.</div>
+  <div class="grid" id="grid"></div>
+  <section class="set">
+    <label>Döngü (dk) <input id="iv" type="number" min="0.5" max="120" step="0.05"></label>
+    <label>Uyarı (sn önce) <input id="ld" type="number" min="0" max="300"></label>
+    <label><input id="snd" type="checkbox"> Sesli uyarı açık</label>
+    <button id="tst">Sesi test et</button>
+    <button id="ntf">Bildirimi aç</button>
+    <button id="dl">Logu indir (CSV)</button>
+  </section>
+  <div id="toast" role="status"></div>
+</main>
+
+<script>
+const CH = [1, 2, 3, 4];
+const SAY = { 1: 'bir', 2: 'iki', 3: 'üç', 4: 'dört' };
+let S = { interval: 7.75, lead: 25, sound: true, base: {}, log: {} };
+
+try {
+  const r = localStorage.getItem('metin-timer-v2');
+  if (r) S = Object.assign(S, JSON.parse(r));
+  S.log = S.log || {};
+} catch (e) {}
+
+const save = () => {
+  try { localStorage.setItem('metin-timer-v2', JSON.stringify(S)); } catch (e) {}
+};
+
+const nxt = {}, pre = {};
+const pad = n => String(n).padStart(2, '0');
+const hms = d => pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+const mmss = ms => {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return pad(Math.floor(s / 60)) + ':' + pad(s % 60);
+};
+
+let ac;
+function ctx() {
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+  } catch (e) {}
+  return ac;
+}
+document.addEventListener('pointerdown', ctx, { once: true });
+
+function beep(f, n) {
+  const a = ctx();
+  if (!a) return;
+  for (let i = 0; i < n; i++) {
+    const o = a.createOscillator(), g = a.createGain();
+    o.frequency.value = f;
+    o.connect(g);
+    g.connect(a.destination);
+    const t = a.currentTime + i * 0.25;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    o.start(t);
+    o.stop(t + 0.2);
+  }
+}
+
+function speak(text, fallbackFreq, fallbackCount) {
+  if (!S.sound) return;
+  if ('speechSynthesis' in window) {
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'tr-TR';
+      u.rate = 1.08;
+      u.pitch = 1.0;
+      const voices = window.speechSynthesis.getVoices();
+      const trVoice = voices.find(v => v.lang && v.lang.toLowerCase().includes('tr'));
+      if (trVoice) u.voice = trVoice;
+      window.speechSynthesis.speak(u);
+      if (!voices.length) beep(fallbackFreq, fallbackCount);
+      return;
+    } catch (e) {}
+  }
+  beep(fallbackFreq, fallbackCount);
+}
+
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
+
+let tt;
+function toast(m) {
+  const t = document.getElementById('toast');
+  t.textContent = m;
+  t.style.display = 'block';
+  clearTimeout(tt);
+  tt = setTimeout(() => t.style.display = 'none', 5000);
+}
+
+function fire(c, spokenText, toastText, fallbackCount) {
+  speak(spokenText, 480 + c * 120, fallbackCount);
+  toast(toastText);
+  try {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(toastText);
+    }
+  } catch (e) {}
+}
+
+const g = document.getElementById('grid');
+CH.forEach(c => {
+  const d = document.createElement('div');
+  d.className = 'card';
+  d.id = 'c' + c;
+  d.style.setProperty('--cc', 'var(--c' + c + ')');
+  d.innerHTML = `
+    <div class="top"><b>CH${c}</b><span class="at" id="a${c}">Saat girilmedi</span></div>
+    <div class="rem" id="r${c}">--:--</div>
+    <div class="bar"><i id="p${c}"></i></div>
+    <input type="time" step="1" id="t${c}" aria-label="CH${c} metin saati">
+    <div class="row"><button data-now="${c}">Şimdi çıktı</button><button data-ok="${c}">Tuttu</button><button data-clr="${c}">Sil</button></div>
+    <div class="cal" id="k${c}"></div>
+    <div class="row" style="margin-top:6px"><button data-use="${c}">Ölçülen döngüyü kullan</button><button data-lc="${c}">Kaydı sil</button></div>
+    <div class="log" id="l${c}"></div>`;
+  g.appendChild(d);
+  document.getElementById('t' + c).addEventListener('change', e => setTime(c, e.target.value));
+  if (S.base[c] != null) document.getElementById('t' + c).value = hms(new Date(S.base[c]));
+});
+
+function reset(c) {
+  nxt[c] = null;
+  pre[c] = null;
+}
+
+function setTime(c, v) {
+  if (!v) delete S.base[c];
+  else {
+    const p = v.split(':').map(Number);
+    const d = new Date();
+    d.setHours(p[0], p[1], p[2] || 0, 0);
+    let tm = d.getTime();
+    if (tm > Date.now() + 60000) tm -= 86400000;
+    S.base[c] = tm;
+  }
+  reset(c);
+  save();
+}
+
+g.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.now) {
+    const c = +b.dataset.now;
+    const t = Date.now();
+    const L = S.log[c] = S.log[c] || [];
+    let dev = null;
+    if (S.base[c] != null) {
+      const I = S.interval * 60000;
+      const k = Math.round((t - S.base[c]) / I);
+      if (k >= 1) dev = (t - (S.base[c] + k * I)) / 1000;
+    }
+    L.push({ t, dev, iv: S.interval });
+    if (L.length > 500) L.shift();
+    renderLog(c);
+    S.base[c] = t;
+    document.getElementById('t' + c).value = hms(new Date(S.base[c]));
+    reset(c);
+    save();
+  }
+  if (b.dataset.ok) {
+    const c = +b.dataset.ok;
+    if (S.base[c] == null) { toast('Önce saat gir'); return; }
+    const I = S.interval * 60000, k = Math.round((Date.now() - S.base[c]) / I);
+    const t = S.base[c] + k * I;
+    const L = S.log[c] = S.log[c] || [];
+    if (L.length && Math.abs(L[L.length - 1].t - t) < 1000) { toast('Bu tur zaten kayıtlı'); return; }
+    L.push({ t, dev: 0, iv: S.interval, ok: true });
+    if (L.length > 500) L.shift();
+    renderLog(c); save();
+    toast('Kanal ' + c + ': tuttu olarak kaydedildi');
+  }
+  if (b.dataset.lc) { const c = +b.dataset.lc; S.log[c] = []; renderLog(c); save(); }
+  if (b.dataset.use) {
+    const c = +b.dataset.use, m = measure(c);
+    if (!m) { toast('En az 2 kayıt lazım'); return; }
+    S.interval = Math.round(m.sec) / 60;
+    iv.value = S.interval.toFixed(4);
+    CH.forEach(reset); CH.forEach(renderLog); save();
+    toast('Döngü ' + Math.floor(m.sec/60) + ' dk ' + Math.round(m.sec%60) + ' sn yapıldı');
+  }
+  if (b.dataset.clr) {
+    const c = +b.dataset.clr;
+    delete S.base[c];
+    document.getElementById('t' + c).value = '';
+    reset(c);
+    save();
+  }
+});
+
+const iv = document.getElementById('iv'), ld = document.getElementById('ld'), snd = document.getElementById('snd');
+iv.value = S.interval;
+ld.value = S.lead;
+snd.checked = S.sound;
+
+iv.addEventListener('change', () => {
+  const v = parseFloat(iv.value);
+  if (v > 0) { S.interval = v; CH.forEach(reset); save(); }
+});
+ld.addEventListener('change', () => {
+  const v = parseInt(ld.value, 10);
+  if (v >= 0) { S.lead = v; CH.forEach(reset); save(); }
+});
+snd.addEventListener('change', () => {
+  S.sound = snd.checked;
+  save();
+});
+
+document.getElementById('tst').addEventListener('click', () => {
+  ctx();
+  speak('Kanal bir çıkacak. Kanal iki çıkacak. Kanal üç çıkacak. Kanal dört çıkacak.', 600, 2);
+});
+
+document.getElementById('ntf').addEventListener('click', () => {
+  try {
+    Notification.requestPermission().then(p => toast(p === 'granted' ? 'Bildirim açıldı' : 'Bildirim izni verilmedi'));
+  } catch (e) {
+    toast('Bu sayfada bildirim desteklenmiyor');
+  }
+});
+
+// Kayıtlardan gerçek döngüyü bul: ilk ve son kayıt arası / tur sayısı
+function measure(c) {
+  const L = (S.log[c] || []);
+  if (L.length < 2) return null;
+  const I = S.interval * 60000, a = L[0].t, z = L[L.length - 1].t;
+  const k = Math.round((z - a) / I);
+  if (k < 1) return null;
+  return { sec: (z - a) / k / 1000, turns: k };
+}
+function renderLog(c) {
+  const el = document.getElementById('l' + c), kk = document.getElementById('k' + c);
+  if (!el) return;
+  const L = S.log[c] || [];
+  el.innerHTML = L.slice().reverse().map(x => hms(new Date(x.t)) +
+    (x.ok ? ' &middot; <b>tuttu</b>' : x.dev == null ? ' (başlangıç)' : ' &middot; sapma <b>' + (x.dev > 0 ? '+' : '') + x.dev.toFixed(1) + ' sn</b>')).join('<br>');
+  const m = measure(c);
+  if (!m) { kk.textContent = L.length ? 'Ölçüm için bir kayıt daha lazım' : ''; return; }
+  const diff = m.sec - S.interval * 60;
+  kk.innerHTML = 'Ölçülen döngü: <b>' + Math.floor(m.sec/60) + ' dk ' + (m.sec%60).toFixed(1) + ' sn</b> (' + m.turns + ' tur, tur başı ' + (diff > 0 ? '+' : '') + diff.toFixed(1) + ' sn)';
+}
+
+document.getElementById('dl').addEventListener('click', () => {
+  const rows = ['kanal,tarih,saat,sapma_sn,dongu_dk,durum'];
+  CH.forEach(c => (S.log[c] || []).forEach(x => {
+    const d = new Date(x.t);
+    rows.push(['CH' + c, d.toLocaleDateString('tr-TR'), hms(d), x.dev == null ? '' : x.dev.toFixed(1), (x.iv || S.interval), x.ok ? 'tuttu' : 'basildi'].join(','));
+  }));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff' + rows.join('\n')], { type: 'text/csv' }));
+  a.download = 'metin-sapma-log.csv';
+  a.click();
+});
+
+function nextSpawn(b, now) {
+  const I = S.interval * 60000;
+  if (b > now) return b;
+  const elapsed = now - b;
+  const steps = Math.floor(elapsed / I) + 1;
+  return b + steps * I;
+}
+
+function tick() {
+  const now = Date.now(), I = S.interval * 60000;
+  let best = null, bc = null;
+
+  CH.forEach(c => {
+    const b = S.base[c],
+          r = document.getElementById('r' + c),
+          a = document.getElementById('a' + c),
+          p = document.getElementById('p' + c),
+          card = document.getElementById('c' + c);
+
+    card.classList.remove('soon', 'urgent');
+
+    if (b == null) {
+      r.textContent = '--:--';
+      a.textContent = 'Saat girilmedi';
+      p.style.width = '0';
+      return;
+    }
+
+    if (nxt[c] != null && now >= nxt[c]) {
+      fire(c, `Kanal ${SAY[c]} çıktı`, `Kanal ${c}: metin çıktı!`, 3);
+    }
+
+    const n = nextSpawn(b, now);
+    nxt[c] = n;
+    const rem = n - now;
+
+    r.textContent = mmss(rem);
+    a.textContent = 'Sonraki ' + hms(new Date(n));
+    p.style.width = Math.min(100, Math.max(0, (1 - rem / I) * 100)) + '%';
+
+    if (rem <= S.lead * 1000) {
+      card.classList.add('urgent');
+      if (pre[c] !== n) {
+        pre[c] = n;
+        const sec = Math.max(1, Math.round(rem / 1000));
+        fire(c, `Kanal ${SAY[c]} çıkacak`, `Kanal ${c}: ${sec} sn sonra çıkıyor`, 2);
+      }
+    }
+
+    if (best === null || n < best) {
+      best = n;
+      bc = c;
+    }
+  });
+
+  const nx = document.getElementById('next');
+  if (bc === null) {
+    nx.textContent = 'Henüz saat girilmedi.';
+    document.title = 'Metin Zamanlayıcı';
+  } else {
+    document.getElementById('c' + bc).classList.add('soon');
+    nx.innerHTML = 'Sıradaki: <b>CH' + bc + '</b> &middot; <b>' + mmss(best - now) + '</b> sonra';
+    document.title = 'CH' + bc + ' ' + mmss(best - now);
+  }
+}
+
+CH.forEach(renderLog);
+setInterval(tick, 250);
+tick();
+</script>
+</body>
+</html>
