@@ -45,7 +45,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--tx);outline-off
 </head>
 <body>
 <main>
-  <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v5 · Tuttu butonu</small></h1>
+  <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v6 · Yedek al/yükle</small></h1>
   <p class="sub">Her kanal için metnin çıktığı bir saati gir. Varsayılan döngü 7 dk 45 sn (7.75 dk) olarak ayarlıdır; metin çıkmadan önce ve çıktığında sesli uyarı verir. Sekme açık kalmalı. Sapmayı ölçmek için: saat tuttuysa "Tuttu"ya, farklı çıktıysa çıktığı anda "Şimdi çıktı"ya bas; sapma ve gerçek döngü kartta görünür.</p>
   <div class="next" id="next">Henüz saat girilmedi.</div>
   <div class="grid" id="grid"></div>
@@ -56,6 +56,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--tx);outline-off
     <button id="tst">Sesi test et</button>
     <button id="ntf">Bildirimi aç</button>
     <button id="dl">Logu indir (CSV)</button>
+    <button id="bk">Yedek al</button>
+    <button id="rs">Yedek yükle</button>
+    <input id="rsf" type="file" accept=".json,application/json" hidden>
   </section>
   <div id="toast" role="status"></div>
 </main>
@@ -305,6 +308,34 @@ document.getElementById('dl').addEventListener('click', () => {
   a.href = URL.createObjectURL(new Blob(['\ufeff' + rows.join('\n')], { type: 'text/csv' }));
   a.download = 'metin-sapma-log.csv';
   a.click();
+});
+
+document.getElementById('bk').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(S)], { type: 'application/json' }));
+  a.download = 'metin-yedek.json';
+  a.click();
+});
+const rsf = document.getElementById('rsf');
+document.getElementById('rs').addEventListener('click', () => rsf.click());
+rsf.addEventListener('change', () => {
+  const f = rsf.files[0]; if (!f) return;
+  f.text().then(t => {
+    const d = JSON.parse(t);
+    if (!d || typeof d !== 'object' || !d.base) throw 0;
+    const cur = S.log || {};
+    S = Object.assign(S, d);
+    S.log = S.log || {};
+    CH.forEach(c => {
+      const m = {}; [...(cur[c] || []), ...(S.log[c] || [])].forEach(x => m[x.t] = x);
+      S.log[c] = Object.values(m).sort((a, b) => a.t - b.t).slice(-500);
+      document.getElementById('t' + c).value = S.base[c] != null ? hms(new Date(S.base[c])) : '';
+      reset(c); renderLog(c);
+    });
+    iv.value = S.interval; ld.value = S.lead; snd.checked = S.sound;
+    save(); toast('Yedek yüklendi');
+  }).catch(() => toast('Yedek dosyası okunamadı'));
+  rsf.value = '';
 });
 
 function nextSpawn(b, now) {
