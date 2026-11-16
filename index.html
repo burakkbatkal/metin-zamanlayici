@@ -45,8 +45,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--tx);outline-off
 </head>
 <body>
 <main>
-  <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v6 · Yedek al/yükle</small></h1>
+  <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v7 · Ortak veri</small></h1>
   <p class="sub">Her kanal için metnin çıktığı bir saati gir. Varsayılan döngü 7 dk 45 sn (7.75 dk) olarak ayarlıdır; metin çıkmadan önce ve çıktığında sesli uyarı verir. Sekme açık kalmalı. Sapmayı ölçmek için: saat tuttuysa "Tuttu"ya, farklı çıktıysa çıktığı anda "Şimdi çıktı"ya bas; sapma ve gerçek döngü kartta görünür.</p>
+  <div class="sub" id="sync">Ortak veri: bağlanıyor…</div>
   <div class="next" id="next">Henüz saat girilmedi.</div>
   <div class="grid" id="grid"></div>
   <section class="set">
@@ -63,7 +64,18 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--tx);outline-off
   <div id="toast" role="status"></div>
 </main>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
+const FB_CONFIG = {
+  apiKey: "AIzaSyD_zGr-cI-TzJRZl70ku76OuWA6bH-_X1E",
+  authDomain: "metin-zamanlayici.firebaseapp.com",
+  databaseURL: "https://metin-zamanlayici-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "metin-zamanlayici",
+  storageBucket: "metin-zamanlayici.firebasestorage.app",
+  messagingSenderId: "308123404684",
+  appId: "1:308123404684:web:d74ae73c69caff5080aea9"
+};
 const CH = [1, 2, 3, 4];
 const SAY = { 1: 'bir', 2: 'iki', 3: 'üç', 4: 'dört' };
 let S = { interval: 7.75, lead: 25, sound: true, base: {}, log: {} };
@@ -74,9 +86,61 @@ try {
   S.log = S.log || {};
 } catch (e) {}
 
-const save = () => {
+const saveLocal = () => {
   try { localStorage.setItem('metin-timer-v2', JSON.stringify(S)); } catch (e) {}
 };
+const save = () => { saveLocal(); push(); };
+
+// ---- Ortak veri (Firebase) ----
+const ROOM = (new URLSearchParams(location.search).get('oda') || 'genel').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) || 'genel';
+let roomRef = null, R = null; // R: son gelen ortak veri
+function push() {
+  if (!roomRef || R === null) return;
+  const upd = {}, rb = R.base || {}, rlog = R.log || {};
+  CH.forEach(c => {
+    const b = S.base[c] != null ? S.base[c] : null;
+    if ((rb[c] != null ? rb[c] : null) !== b) upd['base/' + c] = b;
+    const rl = rlog[c] || {}, ll = S.log[c] || [], keys = new Set(ll.map(x => String(x.t)));
+    ll.forEach(x => { if (!rl[x.t]) upd['log/' + c + '/' + x.t] = JSON.parse(JSON.stringify(x)); });
+    Object.keys(rl).forEach(k => { if (!keys.has(k)) upd['log/' + c + '/' + k] = null; });
+  });
+  if (R.interval !== S.interval) upd.interval = S.interval;
+  if (R.lead !== S.lead) upd.lead = S.lead;
+  if (Object.keys(upd).length) roomRef.update(upd).catch(() => toast('Ortak veriye yazılamadı'));
+}
+function applyRemote(v) {
+  R = v || {};
+  const hasRemote = R.base || R.log || R.interval;
+  if (!hasRemote) { push(); return; } // oda boşsa yereldekini ortak veriye taşı
+  if (R.interval) S.interval = R.interval;
+  if (R.lead != null) S.lead = R.lead;
+  CH.forEach(c => {
+    const nb = R.base && R.base[c] != null ? R.base[c] : null;
+    const ob = S.base[c] != null ? S.base[c] : null;
+    if (nb !== ob) { if (nb == null) delete S.base[c]; else S.base[c] = nb; reset(c); }
+    S.log[c] = Object.values((R.log && R.log[c]) || {}).sort((a, b) => a.t - b.t);
+    const ti = document.getElementById('t' + c);
+    if (ti && document.activeElement !== ti) ti.value = S.base[c] != null ? hms(new Date(S.base[c])) : '';
+    if (typeof renderLog === 'function') renderLog(c);
+  });
+  if (typeof iv !== 'undefined') { iv.value = S.interval; ld.value = S.lead; }
+  saveLocal();
+}
+function startSync() {
+  const st = document.getElementById('sync');
+  try {
+    if (!window.firebase || !FB_CONFIG) throw 0;
+    firebase.initializeApp(FB_CONFIG);
+    const db = firebase.database();
+    roomRef = db.ref('rooms/' + ROOM);
+    db.ref('.info/connected').on('value', s => {
+      st.innerHTML = 'Ortak oda: <b>' + ROOM + '</b> &middot; ' + (s.val() ? 'bağlı, herkes aynı veriyi görüyor' : 'bağlantı yok, tekrar deneniyor…');
+    });
+    roomRef.on('value', s => applyRemote(s.val()));
+  } catch (e) {
+    st.textContent = 'Ortak veri kapalı, sadece bu tarayıcıda çalışıyor.';
+  }
+}
 
 const nxt = {}, pre = {};
 const pad = n => String(n).padStart(2, '0');
@@ -405,6 +469,7 @@ function tick() {
 }
 
 CH.forEach(renderLog);
+startSync();
 setInterval(tick, 250);
 tick();
 </script>
