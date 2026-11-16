@@ -45,7 +45,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--tx);outline-off
 </head>
 <body>
 <main>
-  <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v7 · Ortak veri</small></h1>
+  <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v7.1 · Ortak veri</small></h1>
   <p class="sub">Her kanal için metnin çıktığı bir saati gir. Varsayılan döngü 7 dk 45 sn (7.75 dk) olarak ayarlıdır; metin çıkmadan önce ve çıktığında sesli uyarı verir. Sekme açık kalmalı. Sapmayı ölçmek için: saat tuttuysa "Tuttu"ya, farklı çıktıysa çıktığı anda "Şimdi çıktı"ya bas; sapma ve gerçek döngü kartta görünür.</p>
   <div class="sub" id="sync">Ortak veri: bağlanıyor…</div>
   <div class="next" id="next">Henüz saat girilmedi.</div>
@@ -110,7 +110,7 @@ function push() {
 }
 function applyRemote(v) {
   R = v || {};
-  const hasRemote = R.base || R.log || R.interval;
+  const hasRemote = R.base || R.log;
   if (!hasRemote) { push(); return; } // oda boşsa yereldekini ortak veriye taşı
   if (R.interval) S.interval = R.interval;
   if (R.lead != null) S.lead = R.lead;
