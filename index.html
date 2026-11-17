@@ -49,9 +49,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--tx);outline-off
 </head>
 <body>
 <main>
-  <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v7.2 · Ortak veri</small></h1>
+  <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v7.3 · Ortak veri</small></h1>
   <p class="sub">Her kanal için metnin çıktığı bir saati gir. Varsayılan döngü 7 dk 45 sn (7.75 dk) olarak ayarlıdır; metin çıkmadan önce ve çıktığında sesli uyarı verir. Sekme açık kalmalı. Sapmayı ölçmek için: saat tuttuysa "Tuttu"ya, farklı çıktıysa çıktığı anda "Şimdi çıktı"ya bas; sapma ve gerçek döngü kartta görünür.</p>
   <div class="sub" id="sync">Ortak veri: bağlanıyor…</div>
+  <div class="sub" id="who"></div>
   <div class="next" id="next">Henüz saat girilmedi.</div>
   <div class="grid" id="grid"></div>
   <section class="set">
@@ -138,7 +139,20 @@ function startSync() {
     firebase.initializeApp(FB_CONFIG);
     const db = firebase.database();
     roomRef = db.ref('rooms/' + ROOM);
+    const STAT = db.ref('rooms/_stat_' + ROOM), TS = firebase.database.ServerValue.TIMESTAMP;
+    const me = STAT.child('online').push();
+    let uid = localStorage.getItem('metin-uid');
+    if (!uid) { uid = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('metin-uid', uid); }
+    STAT.child('visits').set(firebase.database.ServerValue.increment(1));
+    STAT.child('users/' + uid).set(TS);
+    let on = 0, vis = 0, usr = 0;
+    const who = document.getElementById('who');
+    const showWho = () => { who.innerHTML = '<b>' + on + '</b> kişi şu an açık &middot; <b>' + usr + '</b> farklı kişi &middot; <b>' + vis + '</b> toplam giriş'; };
+    STAT.child('online').on('value', x => { on = x.numChildren(); showWho(); });
+    STAT.child('visits').on('value', x => { vis = x.val() || 0; showWho(); });
+    STAT.child('users').on('value', x => { usr = x.numChildren(); showWho(); });
     db.ref('.info/connected').on('value', s => {
+      if (s.val()) { me.onDisconnect().remove(); me.set(TS); }
       st.innerHTML = 'Ortak oda: <b>' + ROOM + '</b> &middot; ' + (s.val() ? 'bağlı, herkes aynı veriyi görüyor' : 'bağlantı yok, tekrar deneniyor…');
     });
     roomRef.on('value', s => applyRemote(s.val()));
