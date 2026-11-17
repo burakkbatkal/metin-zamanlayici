@@ -15,6 +15,10 @@ h1{font-size:1.5rem;margin:0 0 4px}
 .sub{color:var(--mut);margin:0 0 16px;max-width:65ch}
 .next{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:16px;font-size:1.1rem}
 .next b{font-variant-numeric:tabular-nums}
+.next{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.ord{font-size:1rem;color:var(--mut)}
+.ord b{color:inherit}
+.ord b.f{color:#fff}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
 .card{background:var(--card);border:1px solid var(--bd);border-top:4px solid var(--cc);border-radius:10px;padding:14px;position:relative}
 .card.soon{outline:2px solid var(--cc)}
@@ -420,6 +424,7 @@ function nextSpawn(b, now) {
 function tick() {
   const now = Date.now(), I = S.interval * 60000;
   let best = null, bc = null;
+  const ord = [];
 
   CH.forEach(c => {
     const b = S.base[c],
@@ -465,6 +470,7 @@ function tick() {
       }
     }
 
+    ord.push([n, c]);
     if (best === null || n < best) {
       best = n;
       bc = c;
@@ -477,7 +483,9 @@ function tick() {
     document.title = 'Metin Zamanlayıcı';
   } else {
     document.getElementById('c' + bc).classList.add('soon');
-    nx.innerHTML = 'Sıradaki: <b>CH' + bc + '</b> &middot; <b>' + mmss(best - now) + '</b> sonra';
+    ord.sort((x, y) => x[0] - y[0]);
+    const os = ord.map((o, i) => '<b' + (i ? '' : ' class="f"') + '>CH' + o[1] + '</b> ' + mmss(o[0] - now)).join(' &rarr; ');
+    nx.innerHTML = '<span>Sıradaki: <b>CH' + bc + '</b> &middot; <b>' + mmss(best - now) + '</b> sonra</span><span class="ord">Sıra: ' + os + '</span>';
     document.title = 'CH' + bc + ' ' + mmss(best - now);
   }
 }
