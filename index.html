@@ -44,17 +44,32 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--tx);outline-off
 .log{font-size:.82rem;color:var(--mut);margin-top:8px;font-variant-numeric:tabular-nums;max-height:120px;overflow:auto}
 .log b{color:var(--tx)}
 .cal{margin-top:6px;font-size:.85rem}
+
+.coords{margin:12px 0 0;background:var(--card);border:1px solid var(--bd);border-radius:10px}
+.coords>summary{cursor:pointer;padding:10px 14px;color:var(--mut);font-weight:600;user-select:none;list-style-position:outside}
+.coords>summary:hover{color:var(--tx)}
+.coords[open]>summary{border-bottom:1px solid var(--bd)}
+.clist{list-style:none;margin:0;padding:4px 10px 8px}
+.clist li{display:flex;align-items:center;gap:8px;padding:5px 4px;border-bottom:1px solid var(--bd);font-size:.9rem}
+.clist li:last-child{border-bottom:0}
+.clist .nm{flex:1;min-width:0}
+.clist .xy{font-variant-numeric:tabular-nums;color:var(--mut)}
+.clist button{padding:3px 8px;font-size:.8rem;flex-shrink:0}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;display:none;max-width:90vw}
 </style>
 </head>
 <body>
 <main>
-  <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v7.3 · Ortak veri</small></h1>
+  <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v7.4 · Ortak veri</small></h1>
   <p class="sub">Her kanal için metnin çıktığı bir saati gir. Varsayılan döngü 7 dk 45 sn (7.75 dk) olarak ayarlıdır; metin çıkmadan önce ve çıktığında sesli uyarı verir. Sekme açık kalmalı. Sapmayı ölçmek için: saat tuttuysa "Tuttu"ya, farklı çıktıysa çıktığı anda "Şimdi çıktı"ya bas; sapma ve gerçek döngü kartta görünür.</p>
   <div class="sub" id="sync">Ortak veri: bağlanıyor…</div>
   <div class="sub" id="who"></div>
   <div class="next" id="next">Henüz saat girilmedi.</div>
   <div class="grid" id="grid"></div>
+  <details class="coords">
+    <summary>📍 Koordinatlar</summary>
+    <ul class="clist" id="clist"></ul>
+  </details>
   <section class="set">
     <label>Döngü (dk) <input id="iv" type="number" min="0.5" max="120" step="0.05"></label>
     <label>Uyarı (sn önce) <input id="ld" type="number" min="0" max="300"></label>
@@ -84,6 +99,19 @@ const FB_CONFIG = {
 };
 const CH = [1, 2, 3, 4];
 const SAY = { 1: 'bir', 2: 'iki', 3: 'üç', 4: 'dört' };
+const COORDS = [
+  { name: '3.Ada', x: 10605, y: 263 },
+  { name: '3.ada aşağısı', x: 10599, y: 365 },
+  { name: 'paralel', x: 10849, y: 458 },
+  { name: 'dudak', x: 10797, y: 382 },
+  { name: 'burun', x: 10716, y: 503 },
+  { name: 'Tepe', x: 10929, y: 323 },
+  { name: 'İspanyol', x: 10841, y: 265 },
+  { name: 'Tepsi', x: 10987, y: 228 },
+  { name: 'Merdiven', x: 11112, y: 260 },
+  { name: 'Ev baş', x: 11006, y: 534 },
+  { name: 'Ev Son', x: 11156, y: 592 }
+];
 let S = { interval: 7.75, lead: 25, sound: true, base: {}, log: {} };
 
 try {
@@ -508,6 +536,45 @@ CH.forEach(renderLog);
 startSync();
 setInterval(tick, 250);
 tick();
+
+function copyXY(text, btn) {
+  const done = () => { btn.textContent = '✓'; setTimeout(() => { btn.textContent = 'Kopyala'; }, 1200); };
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { if (document.execCommand('copy')) done(); } catch (e) {}
+    document.body.removeChild(ta);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(fallback);
+  } else fallback();
+}
+(function renderCoords() {
+  const ul = document.getElementById('clist');
+  if (!ul) return;
+  COORDS.forEach(p => {
+    const li = document.createElement('li');
+    const xy = p.x + ',' + p.y;
+    const nm = document.createElement('span');
+    nm.className = 'nm';
+    nm.textContent = p.name;
+    const cx = document.createElement('span');
+    cx.className = 'xy';
+    cx.textContent = xy;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Kopyala';
+    btn.addEventListener('click', () => copyXY(xy, btn));
+    li.append(nm, cx, btn);
+    ul.appendChild(li);
+  });
+})();
+
 </script>
 </body>
 </html>
