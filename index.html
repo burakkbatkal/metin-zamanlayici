@@ -303,7 +303,6 @@ CH.forEach(c => {
     <input type="time" step="1" id="t${c}" aria-label="CH${c} metin saati">
     <div class="row"><button data-now="${c}">Şimdi çıktı</button><button data-ok="${c}">Tuttu</button><button data-clr="${c}">Sil</button></div>
     <div class="cal" id="k${c}"></div>
-    <div class="row" style="margin-top:6px"><button data-use="${c}">Ölçülen döngüyü kullan</button><button data-lc="${c}">Kaydı sil</button></div>
     <div class="log" id="l${c}"></div>`;
   g.appendChild(d);
   document.getElementById('t' + c).addEventListener('change', e => setTime(c, e.target.value));
