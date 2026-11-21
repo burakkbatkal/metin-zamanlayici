@@ -63,6 +63,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold2);outline-
 .set input[type=number]{width:76px;text-align:center}
 .log{font-size:.8rem;color:var(--mut);margin-top:8px;font-variant-numeric:tabular-nums;max-height:110px;overflow:auto;position:relative;border-top:1px dashed var(--bd);padding-top:6px}
 .log:empty{display:none}
+.lgd{margin-top:8px}.lgd summary{cursor:pointer;font-size:.78rem;color:var(--mut);user-select:none}.lgd summary:hover{color:var(--tx)}
 .log b{color:var(--tx)}
 .cal{margin-top:6px;font-size:.82rem;color:var(--mut);position:relative}
 .cal b{color:var(--gold2)}
@@ -303,7 +304,7 @@ CH.forEach(c => {
     <input type="time" step="1" id="t${c}" aria-label="CH${c} metin saati">
     <div class="row"><button data-now="${c}">Şimdi çıktı</button><button data-ok="${c}">Tuttu</button><button data-clr="${c}">Sil</button></div>
     <div class="cal" id="k${c}"></div>
-    <div class="log" id="l${c}"></div>`;
+    <details class="lgd"><summary>Kayıtlar</summary><div class="log" id="l${c}"></div></details>`;
   g.appendChild(d);
   document.getElementById('t' + c).addEventListener('change', e => setTime(c, e.target.value));
   if (S.base[c] != null) document.getElementById('t' + c).value = hms(new Date(S.base[c]));
