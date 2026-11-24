@@ -77,12 +77,26 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold2);outline-
 .clist .xy{font-variant-numeric:tabular-nums;color:var(--gold2);font-family:"Cinzel",serif;font-size:.85rem}
 .clist button{padding:3px 8px;font-size:.78rem;flex-shrink:0}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:linear-gradient(180deg,#3a2f20,#251e15);border:1px solid var(--gold);color:var(--gold2);padding:10px 16px;border-radius:8px;font-weight:600;display:none;max-width:90vw;box-shadow:0 8px 24px rgba(0,0,0,.6)}
-@media (max-width:480px){main{padding:14px 10px 30px}.rem{font-size:2.6rem}.next{font-size:1rem;padding:10px 12px}.set label{flex:1 1 45%}.row button{padding:7px 6px}}
+.hdr{display:flex;align-items:center;justify-content:center;gap:10px 14px;flex-wrap:wrap;margin:0 0 6px}
+.hdr h1{margin:0}
+.pres{display:flex;align-items:center;gap:8px}
+.pres-btn{border-radius:999px;padding:5px 12px;font-size:.82rem;letter-spacing:.02em;background:linear-gradient(180deg,#2a2620,#1a1713);border-color:#5a5246;color:#b8ad98;white-space:nowrap}
+.pres-btn:hover{border-color:#8a7d68;color:#efe6d2}
+.pres-btn.on{background:linear-gradient(180deg,#7a5a22,#4e3814);border-color:var(--gold);color:#fff1c4;font-weight:700;box-shadow:0 0 12px rgba(212,167,74,.35)}
+.pres-count{color:var(--mut);font-size:.85rem;white-space:nowrap;user-select:none}
+.pres-count.is-zero{opacity:.4}
+@media (max-width:480px){main{padding:14px 10px 30px}.rem{font-size:2.6rem}.next{font-size:1rem;padding:10px 12px}.set label{flex:1 1 45%}.row button{padding:7px 6px}.hdr{flex-wrap:nowrap;gap:8px}.hdr h1{font-size:1.22rem;letter-spacing:.04em;flex:1;min-width:0;text-align:left}.pres-btn{padding:4px 9px;font-size:.72rem}}
 </style>
 </head>
 <body>
 <main>
-  <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v7.4 · Ortak veri</small></h1>
+  <div class="hdr">
+    <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v7.5 · Ortak veri</small></h1>
+    <div class="pres">
+      <button type="button" id="presBtn" class="pres-btn" aria-pressed="false">Oyunda değilim</button>
+      <span class="pres-count is-zero" id="presCount" aria-live="polite">👥 0</span>
+    </div>
+  </div>
   <div class="orn"></div>
   <details class="help"><summary>Nasıl kullanılır?</summary><p>Her kanal için metnin çıktığı bir saati gir. Varsayılan döngü 7 dk 45 sn (7.75 dk) olarak ayarlıdır; metin çıkmadan önce ve çıktığında sesli uyarı verir. Sekme açık kalmalı. Sapmayı ölçmek için: saat tuttuysa "Tuttu"ya, farklı çıktıysa çıktığı anda "Şimdi çıktı"ya bas; sapma ve gerçek döngü kartta görünür.</p></details>
   <div class="sub" id="sync">Ortak veri: bağlanıyor…</div>
@@ -152,6 +166,172 @@ const save = () => { saveLocal(); push(); };
 // ---- Ortak veri (Firebase) ----
 const ROOM = (new URLSearchParams(location.search).get('oda') || 'genel').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) || 'genel';
 let roomRef = null, R = null; // R: son gelen ortak veri
+
+// ---- Oyundayım (varlık; oda verisinin dışında, _stat_ gibi kardeş yollar) ----
+const PRES_LS = 'metin-presence';
+const PRES_IDLE = 35 * 60 * 1000;
+const PRES_STALE = 5 * 60 * 1000;
+const PRES_ALIVE = 3 * 60 * 1000;
+const PRES_HEART = 60 * 1000;
+const FB_BASE = FB_CONFIG.databaseURL;
+let presRef = null, sessRef = null, presSnap = null;
+let presOn = false, presStart = 0, presLast = 0, presClosing = false;
+let presHeartTimer = null, presIdleTimer = null, lastPresAct = Date.now();
+
+function deviceId() {
+  let uid = localStorage.getItem('metin-uid');
+  if (!uid) {
+    uid = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    try { localStorage.setItem('metin-uid', uid); } catch (e) {}
+  }
+  return uid;
+}
+function presUrl(path) { return FB_BASE + '/' + path + '.json'; }
+function loadPresLocal() {
+  try { return JSON.parse(localStorage.getItem(PRES_LS) || 'null'); } catch (e) { return null; }
+}
+function savePresLocal() {
+  try {
+    if (presOn) localStorage.setItem(PRES_LS, JSON.stringify({ on: true, start: presStart, last: presLast }));
+    else localStorage.removeItem(PRES_LS);
+  } catch (e) {}
+}
+function renderPresBtn() {
+  const btn = document.getElementById('presBtn');
+  if (!btn) return;
+  btn.classList.toggle('on', presOn);
+  btn.setAttribute('aria-pressed', presOn ? 'true' : 'false');
+  btn.textContent = presOn ? 'Oyundayım' : 'Oyunda değilim';
+}
+function renderPresCount(n) {
+  const el = document.getElementById('presCount');
+  if (!el) return;
+  el.textContent = '👥 ' + n;
+  el.classList.toggle('is-zero', !n);
+}
+function updatePresCount(val) {
+  const now = Date.now();
+  let n = 0;
+  if (val) {
+    Object.keys(val).forEach(k => {
+      const p = val[k];
+      if (p && p.on !== false && p.last && (now - p.last) <= PRES_ALIVE) n++;
+    });
+  }
+  renderPresCount(n);
+}
+function touchPresAct() {
+  lastPresAct = Date.now();
+  if (presOn) schedulePresIdle();
+}
+function presIdleLimit() { return window.__presIdleOverride || PRES_IDLE; }
+function schedulePresIdle() {
+  clearTimeout(presIdleTimer);
+  if (!presOn) return;
+  const left = presIdleLimit() - (Date.now() - lastPresAct);
+  presIdleTimer = setTimeout(checkPresIdle, Math.max(250, left));
+}
+function checkPresIdle() {
+  if (presOn && Date.now() - lastPresAct >= presIdleLimit()) closePresence('idle');
+  else if (presOn) schedulePresIdle();
+}
+function startHeartbeat() {
+  clearInterval(presHeartTimer);
+  presHeartTimer = setInterval(() => {
+    if (!presOn) return;
+    presLast = Date.now();
+    savePresLocal();
+    writePresence();
+  }, PRES_HEART);
+}
+function writePresence() {
+  const data = { on: true, start: presStart, last: presLast };
+  if (presRef) return presRef.child(deviceId()).set(data).catch(() => {});
+  return fetch(presUrl('rooms/_presence_' + ROOM + '/' + deviceId()), {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data), keepalive: true
+  }).catch(() => {});
+}
+function sessionKey(start) { return deviceId() + '_' + start; }
+function writeSession(start, end, beacon) {
+  const data = { id: deviceId(), start: start, end: end };
+  const path = 'rooms/_sessions_' + ROOM + '/' + sessionKey(start);
+  // sendBeacon yalnızca POST yapar; belirli anahtara POST alt düğüm açar. Kapanışta PUT+keepalive.
+  if (sessRef && !beacon) return sessRef.child(sessionKey(start)).set(data).catch(() => {});
+  return fetch(presUrl(path), {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data), keepalive: true
+  }).catch(() => {});
+}
+function deletePresence(beacon) {
+  const path = 'rooms/_presence_' + ROOM + '/' + deviceId();
+  if (presRef && !beacon) return presRef.child(deviceId()).remove().catch(() => {});
+  return fetch(presUrl(path), { method: 'DELETE', keepalive: true }).catch(() => {});
+}
+function closePresence(reason, endTime, beacon) {
+  if (!presOn) return;
+  const start = presStart, end = endTime || Date.now();
+  presOn = false;
+  presClosing = true;
+  clearInterval(presHeartTimer);
+  clearTimeout(presIdleTimer);
+  savePresLocal();
+  renderPresBtn();
+  if (start) writeSession(start, end, !!beacon);
+  deletePresence(!!beacon);
+  presStart = 0;
+  presLast = 0;
+  presClosing = false;
+}
+function openPresence(resumeStart) {
+  if (presOn) return;
+  const now = Date.now();
+  presOn = true;
+  presStart = resumeStart || now;
+  presLast = now;
+  lastPresAct = now;
+  presClosing = false;
+  savePresLocal();
+  renderPresBtn();
+  writePresence();
+  startHeartbeat();
+  schedulePresIdle();
+}
+function recoverPresence() {
+  const loc = loadPresLocal();
+  if (!loc || !loc.on) return;
+  const last = loc.last || loc.start || 0;
+  if (Date.now() - last > PRES_STALE) {
+    const start = loc.start;
+    try { localStorage.removeItem(PRES_LS); } catch (e) {}
+    if (start) writeSession(start, last, false);
+    deletePresence(false);
+    presOn = false;
+    presStart = 0;
+    presLast = 0;
+    renderPresBtn();
+  } else openPresence(loc.start);
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') checkPresIdle();
+});
+window.addEventListener('pagehide', () => { if (presOn) closePresence('unload', Date.now(), true); });
+window.addEventListener('beforeunload', () => { if (presOn) closePresence('unload', Date.now(), true); });
+
+window.__presDebug = {
+  get idleMs() { return presIdleLimit(); },
+  setIdleMs(n) { window.__presIdleOverride = n; schedulePresIdle(); },
+  isOn: () => presOn,
+  uid: () => deviceId(),
+  start: () => presStart,
+  last: () => presLast,
+  lastAct: () => lastPresAct,
+  setLastAct(t) { lastPresAct = t; checkPresIdle(); },
+  close: (r) => closePresence(r || 'test'),
+  open: () => openPresence()
+};
+
 function push() {
   if (!roomRef || R === null) return;
   const upd = {}, rb = R.base || {}, rlog = R.log || {};
@@ -193,10 +373,14 @@ function startSync() {
     roomRef = db.ref('rooms/' + ROOM);
     const STAT = db.ref('rooms/_stat_' + ROOM), TS = firebase.database.ServerValue.TIMESTAMP;
     const me = STAT.child('online').push();
-    let uid = localStorage.getItem('metin-uid');
-    if (!uid) { uid = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('metin-uid', uid); }
+    const uid = deviceId();
     STAT.child('visits').set(firebase.database.ServerValue.increment(1));
     STAT.child('users/' + uid).set(TS);
+    presRef = db.ref('rooms/_presence_' + ROOM);
+    sessRef = db.ref('rooms/_sessions_' + ROOM);
+    presRef.on('value', s => { presSnap = s.val(); updatePresCount(presSnap); });
+    setInterval(() => updatePresCount(presSnap), 15000);
+    recoverPresence();
     let on = 0, vis = 0, usr = 0;
     const who = document.getElementById('who');
     const showWho = () => { who.innerHTML = '<b>' + on + '</b> kişi şu an açık &middot; <b>' + usr + '</b> farklı kişi &middot; <b>' + vis + '</b> toplam giriş'; };
@@ -333,6 +517,7 @@ g.addEventListener('click', e => {
   const b = e.target.closest('button');
   if (!b) return;
   if (b.dataset.now) {
+    touchPresAct();
     const c = +b.dataset.now;
     const t = Date.now();
     const L = S.log[c] = S.log[c] || [];
@@ -351,6 +536,7 @@ g.addEventListener('click', e => {
     save();
   }
   if (b.dataset.ok) {
+    touchPresAct();
     const c = +b.dataset.ok;
     if (S.base[c] == null) { toast('Önce saat gir'); return; }
     const I = S.interval * 60000, k = Math.round((Date.now() - S.base[c]) / I);
@@ -556,6 +742,11 @@ function tick() {
 }
 
 CH.forEach(renderLog);
+document.getElementById('presBtn').addEventListener('click', () => {
+  touchPresAct();
+  if (presOn) closePresence('click');
+  else openPresence();
+});
 startSync();
 setInterval(tick, 250);
 tick();
