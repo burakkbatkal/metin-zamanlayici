@@ -57,8 +57,8 @@ button[data-now]{background:linear-gradient(180deg,#7a5a22,#4e3814);border-color
 button[data-ok]{font-weight:600}
 button[data-clr],button[data-lc]{color:var(--mut)}
 button:focus-visible,input:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
-.row{display:flex;gap:6px}
-.row button:first-child{flex:1}
+.row{display:flex;gap:6px;width:100%}
+.row button{flex:1;padding:6px 8px;font-size:.76rem}
 .set{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;justify-content:center;margin-top:18px;padding:14px;border-radius:10px;color:var(--mut);font-size:.92rem;background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--bd)}
 .set input[type=number]{width:76px;text-align:center}
 .log{font-size:.8rem;color:var(--mut);margin-top:8px;font-variant-numeric:tabular-nums;max-height:110px;overflow:auto;position:relative;border-top:1px dashed var(--bd);padding-top:6px}
@@ -85,13 +85,13 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold2);outline-
 .pres-btn.on{background:linear-gradient(180deg,#7a5a22,#4e3814);border-color:var(--gold);color:#fff1c4;font-weight:700;box-shadow:0 0 12px rgba(212,167,74,.35)}
 .pres-count{color:var(--mut);font-size:.85rem;white-space:nowrap;user-select:none}
 .pres-count.is-zero{opacity:.4}
-@media (max-width:480px){main{padding:14px 10px 30px}.rem{font-size:2.6rem}.next{font-size:1rem;padding:10px 12px}.set label{flex:1 1 45%}.row button{padding:7px 6px}.hdr{flex-wrap:nowrap;gap:8px}.hdr h1{font-size:1.22rem;letter-spacing:.04em;flex:1;min-width:0;text-align:left}.pres-btn{padding:4px 9px;font-size:.72rem}}
+@media (max-width:480px){main{padding:14px 10px 30px}.rem{font-size:2.6rem}.next{font-size:1rem;padding:10px 12px}.set label{flex:1 1 45%}.row button{padding:5px 6px}.hdr{flex-wrap:nowrap;gap:8px}.hdr h1{font-size:1.22rem;letter-spacing:.04em;flex:1;min-width:0;text-align:left}.pres-btn{padding:4px 9px;font-size:.72rem}}
 </style>
 </head>
 <body>
 <main>
   <div class="hdr">
-    <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v7.5 · Ortak veri</small></h1>
+    <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v7.6 · Ortak veri</small></h1>
     <div class="pres">
       <button type="button" id="presBtn" class="pres-btn" aria-pressed="false">Oyunda değilim</button>
       <span class="pres-count is-zero" id="presCount" aria-live="polite">👥 0</span>
@@ -486,7 +486,7 @@ CH.forEach(c => {
     <div class="rem" id="r${c}">--:--</div>
     <div class="bar"><i id="p${c}"></i></div>
     <input type="time" step="1" id="t${c}" aria-label="CH${c} metin saati">
-    <div class="row"><button data-now="${c}">Şimdi çıktı</button><button data-ok="${c}">Tuttu</button><button data-clr="${c}">Sil</button></div>
+    <div class="row"><button data-now="${c}">Şimdi çıktı</button><button data-ok="${c}">Tuttu</button></div>
     <div class="cal" id="k${c}"></div>
     <details class="lgd"><summary>Kayıtlar</summary><div class="log" id="l${c}"></div></details>`;
   g.appendChild(d);
