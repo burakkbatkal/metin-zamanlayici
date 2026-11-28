@@ -88,23 +88,49 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold2);outline-
 .pres-btn.on{background:linear-gradient(180deg,#7a5a22,#4e3814);border-color:var(--gold);color:#fff1c4;font-weight:700;box-shadow:0 0 12px rgba(212,167,74,.35)}
 .pres-count{color:var(--mut);font-size:.85rem;white-space:nowrap;user-select:none}
 .pres-count.is-zero{opacity:.4}
-@media (max-width:480px){main{padding:14px 10px 30px}.rem{font-size:2.6rem}.next{font-size:1rem;padding:10px 12px}.set label{flex:1 1 45%}.row button{padding:5px 6px}.undo{font-size:.7rem;padding:4px 10px}.hdr{flex-wrap:nowrap;gap:8px}.hdr h1{font-size:1.22rem;letter-spacing:.04em;flex:1;min-width:0;text-align:left}.pres-btn{padding:4px 9px;font-size:.72rem}}
+.maint-btn{border-radius:999px;padding:5px 10px;font-size:.82rem;letter-spacing:.02em;background:linear-gradient(180deg,#2a2620,#1a1713);border-color:#5a5246;color:#b8ad98;white-space:nowrap}
+.maint-btn:hover{border-color:var(--gold);color:#fff3d0}
+.maint-hint{display:none;margin:0 0 8px;font-size:.78rem;color:var(--gold2);text-align:center;position:relative;line-height:1.35}
+.maint-hint.show{display:block}
+.maint-hint small{display:block;color:var(--mut);font-size:.72rem;margin-top:2px}
+.hepsi-wrap{display:none;margin:0 0 14px;padding:12px 16px;border-radius:10px;text-align:center;background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--gold);box-shadow:inset 0 1px 0 rgba(255,230,170,.06),0 6px 18px rgba(0,0,0,.45)}
+.hepsi-wrap.show{display:block}
+.hepsi-btn{width:100%;max-width:420px;padding:10px 16px;font-size:1.05rem;font-weight:700;background:linear-gradient(180deg,#7a5a22,#4e3814);border-color:var(--gold);color:#fff1c4}
+.hepsi-btn:hover{color:#fff8e0}
+.hepsi-note{margin:8px 0 0;font-size:.78rem;color:var(--mut)}
+.hepsi-undo{display:none;margin:8px auto 0}
+.hepsi-undo.show{display:inline-block}
+.modal{display:none;position:fixed;inset:0;z-index:80;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.62)}
+.modal.show{display:flex}
+.modal-box{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--gold);border-radius:10px;padding:18px 18px 16px;max-width:360px;width:100%;box-shadow:0 12px 32px rgba(0,0,0,.65);text-align:center}
+.modal-box p{margin:0 0 8px;color:var(--tx)}
+.modal-note{font-size:.8rem;color:var(--mut)!important}
+.modal-row{display:flex;gap:8px;margin-top:12px}
+.modal-row button{flex:1}
+#maintYes{background:linear-gradient(180deg,#7a5a22,#4e3814);border-color:var(--gold);color:#fff1c4;font-weight:700}
+@media (max-width:480px){main{padding:14px 10px 30px}.rem{font-size:2.6rem}.next{font-size:1rem;padding:10px 12px}.set label{flex:1 1 45%}.row button{padding:5px 6px}.undo{font-size:.7rem;padding:4px 10px}.hdr{flex-wrap:nowrap;gap:8px}.hdr h1{font-size:1.22rem;letter-spacing:.04em;flex:1;min-width:0;text-align:left}.pres-btn,.maint-btn{padding:4px 8px;font-size:.72rem}.hepsi-btn{padding:8px 12px;font-size:.95rem}}
 </style>
 </head>
 <body>
 <main>
   <div class="hdr">
-    <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v7.7 · Ortak veri</small></h1>
+    <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v7.8 · Ortak veri</small></h1>
     <div class="pres">
+      <button type="button" id="maintBtn" class="maint-btn">🔧 Bakım</button>
       <button type="button" id="presBtn" class="pres-btn" aria-pressed="false">Oyunda değilim</button>
       <span class="pres-count is-zero" id="presCount" aria-live="polite">👥 0</span>
     </div>
   </div>
   <div class="orn"></div>
-  <details class="help"><summary>Nasıl kullanılır?</summary><p>Her kanal için metnin çıktığı bir saati gir. Varsayılan döngü 7 dk 45 sn (7.75 dk) olarak ayarlıdır; metin çıkmadan önce ve çıktığında sesli uyarı verir. Sekme açık kalmalı. Sapmayı ölçmek için: saat tuttuysa "Tuttu"ya, farklı çıktıysa çıktığı anda "Şimdi çıktı"ya bas; sapma ve gerçek döngü kartta görünür.</p></details>
+  <details class="help"><summary>Nasıl kullanılır?</summary><p>Her kanal için metnin çıktığı bir saati gir. Varsayılan döngü 7 dk 45 sn (7.75 dk) olarak ayarlıdır; metin çıkmadan önce ve çıktığında sesli uyarı verir. Sekme açık kalmalı. Sapmayı ölçmek için: saat tuttuysa "Tuttu"ya, farklı çıktıysa çıktığı anda "Şimdi çıktı"ya bas; sapma ve gerçek döngü kartta görünür. Sunucu bakıma girince üstteki Bakım tuşuyla saatleri sıfırla (açılış 08:00); açılınca Hepsi çıktı veya kanallarda Şimdi çıktı'ya bas.</p></details>
   <div class="sub" id="sync">Ortak veri: bağlanıyor…</div>
   <div class="sub" id="who"></div>
   <div class="next" id="next">Henüz saat girilmedi.</div>
+  <div class="hepsi-wrap" id="hepsiWrap">
+    <button type="button" class="hepsi-btn" id="hepsiBtn">Hepsi çıktı</button>
+    <button type="button" class="undo hepsi-undo" id="hepsiUndo">↶ Geri al</button>
+    <p class="hepsi-note" id="hepsiNote">Açılış 08:00</p>
+  </div>
   <div class="grid" id="grid"></div>
   <details class="coords">
     <summary>📍 Koordinatlar</summary>
@@ -124,6 +150,16 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold2);outline-
   </section>
   <div id="toast" role="status"></div>
 </main>
+<div id="maintModal" class="modal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="maintModalT" tabindex="-1">
+    <p id="maintModalT">Bakım geldi mi? Dört kanalın saati sıfırlanacak.</p>
+    <p class="modal-note">Açılış 08:00</p>
+    <div class="modal-row">
+      <button type="button" id="maintNo">Vazgeç</button>
+      <button type="button" id="maintYes">Evet, sıfırla</button>
+    </div>
+  </div>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -334,6 +370,15 @@ window.__presDebug = {
   close: (r) => closePresence(r || 'test'),
   open: () => openPresence()
 };
+window.__maintDebug = {
+  last: () => lastMaintT(),
+  list: () => maintList(),
+  open: openMaintModal,
+  close: closeMaintModal,
+  confirm: doMaintenance,
+  hepsi: doHepsiCikti,
+  bulkUndo: doBulkUndo
+};
 
 function push() {
   if (!roomRef || R === null) return;
@@ -351,15 +396,20 @@ function push() {
 }
 function applyRemote(v) {
   R = v || {};
-  const hasRemote = R.base || R.log;
-  if (!hasRemote) { push(); return; } // oda boşsa yereldekini ortak veriye taşı
+  S.maint = R.maint || {};
+  const hasRemote = R.base || R.log || R.maint;
+  if (!hasRemote) { push(); if (typeof renderMaintUI === 'function') renderMaintUI(); return; } // oda boşsa yereldekini ortak veriye taşı
   if (R.interval) S.interval = R.interval;
   if (R.lead != null) S.lead = R.lead;
+  const mt = lastMaintT();
+  const guard = Date.now() < maintClearUntil;
   CH.forEach(c => {
     const tb = tomb[c];
     const tbLive = tb && Date.now() < tb.until;
     let nb = R.base && R.base[c] != null ? R.base[c] : null;
-    if (tbLive && !tb.ok) nb = tb.prevBase != null ? tb.prevBase : null;
+    // Bakım koruması yalnızca bakımdan önceki eski saatleri reddeder; yeni basışları silmez.
+    if (guard && nb != null && mt && nb < mt) nb = null;
+    if (tbLive && !tb.ok && nb === tb.t) nb = tb.prevBase != null ? tb.prevBase : null;
     const ob = S.base[c] != null ? S.base[c] : null;
     if (nb !== ob) { if (nb == null) delete S.base[c]; else S.base[c] = nb; reset(c); }
     let logs = Object.values((R.log && R.log[c]) || {}).filter(x => x && x.t != null);
@@ -367,16 +417,25 @@ function applyRemote(v) {
     S.log[c] = logs.sort((a, b) => a.t - b.t);
     if (tbLive) {
       const still = R.log && R.log[c] && R.log[c][tb.t];
-      const want = !tb.ok ? (tb.prevBase != null ? tb.prevBase : null) : null;
-      const baseWrong = !tb.ok && ((R.base && R.base[c] != null ? R.base[c] : null) !== want);
-      if (still || baseWrong) purgeLog(c, tb.t, want, !tb.ok);
+      const remoteBase = R.base && R.base[c] != null ? R.base[c] : null;
+      const staleBase = !tb.ok && remoteBase === tb.t;
+      if (still || staleBase) purgeLog(c, tb.t, tb.prevBase, staleBase);
     }
     const ti = document.getElementById('t' + c);
     if (ti && document.activeElement !== ti) ti.value = S.base[c] != null ? hms(new Date(S.base[c])) : '';
     if (typeof renderLog === 'function') renderLog(c);
   });
   if (typeof iv !== 'undefined') { iv.value = S.interval; ld.value = S.lead; }
+  if (guard && R.base && mt && roomRef) {
+    const upd = {};
+    CH.forEach(c => {
+      const b = R.base[c];
+      if (b != null && b < mt) upd['base/' + c] = null;
+    });
+    if (Object.keys(upd).length) roomRef.update(upd).catch(() => {});
+  }
   saveLocal();
+  if (typeof renderMaintUI === 'function') renderMaintUI();
 }
 function startSync() {
   const st = document.getElementById('sync');
@@ -498,6 +557,7 @@ CH.forEach(c => {
   d.innerHTML = `
     <div class="top"><b>CH${c}</b><span class="at" id="a${c}">Saat girilmedi</span></div>
     <div class="rem" id="r${c}">--:--</div>
+    <div class="maint-hint" id="mh${c}">Bakım sonrası: ilk çıkışta Şimdi çıktı'ya bas<small>Açılış 08:00</small></div>
     <div class="bar"><i id="p${c}"></i></div>
     <input type="time" step="1" id="t${c}" aria-label="CH${c} metin saati">
     <div class="row"><button data-now="${c}">Şimdi çıktı</button><button data-ok="${c}">Tuttu</button></div>
@@ -516,7 +576,115 @@ function reset(c) {
 
 const UNDO_MS = 120000;
 const undo = {}, tomb = {};
+let maintClearUntil = 0, bulkUndo = null;
 function undoMs() { return window.__undoMs || UNDO_MS; }
+function maintList() {
+  const m = (R && R.maint) || S.maint || {};
+  return Object.values(m).filter(x => x && x.t != null).sort((a, b) => a.t - b.t);
+}
+function lastMaintT() {
+  const L = maintList();
+  return L.length ? L[L.length - 1].t : null;
+}
+function renderMaintUI() {
+  const mt = lastMaintT();
+  const missing = CH.some(c => S.base[c] == null);
+  const wrap = document.getElementById('hepsiWrap');
+  if (wrap) wrap.classList.toggle('show', !!(mt && missing));
+  const note = document.getElementById('hepsiNote');
+  if (note) {
+    let s = 'Açılış 08:00';
+    if (mt) s += ' · Son bakım ' + hms(new Date(mt));
+    note.textContent = s;
+  }
+  const bu = document.getElementById('hepsiUndo');
+  if (bu) bu.classList.toggle('show', !!(bulkUndo && Date.now() < bulkUndo.expires));
+  CH.forEach(c => {
+    const el = document.getElementById('mh' + c);
+    if (el) el.classList.toggle('show', !!(mt && S.base[c] == null));
+  });
+}
+function openMaintModal() {
+  const m = document.getElementById('maintModal');
+  if (!m) return;
+  m.hidden = false;
+  m.classList.add('show');
+  const box = m.querySelector('.modal-box');
+  if (box) box.focus();
+}
+function closeMaintModal() {
+  const m = document.getElementById('maintModal');
+  if (!m) return;
+  m.classList.remove('show');
+  m.hidden = true;
+  const btn = document.getElementById('maintBtn');
+  if (btn) btn.focus();
+}
+function doMaintenance() {
+  const t = Date.now();
+  maintClearUntil = t + 10000;
+  if (bulkUndo && bulkUndo.timer) clearTimeout(bulkUndo.timer);
+  bulkUndo = null;
+  CH.forEach(c => {
+    delete S.base[c];
+    const ti = document.getElementById('t' + c);
+    if (ti) ti.value = '';
+    reset(c);
+    if (undo[c] && undo[c].timer) clearTimeout(undo[c].timer);
+    delete undo[c];
+    delete tomb[c];
+    renderUndo(c);
+  });
+  S.maint = S.maint || {};
+  S.maint[t] = { t, by: deviceId() };
+  saveLocal();
+  if (roomRef) {
+    const upd = {};
+    CH.forEach(c => { upd['base/' + c] = null; });
+    upd['maint/' + t] = { t, by: deviceId() };
+    roomRef.update(upd).catch(() => toast('Ortak veriye yazılamadı'));
+  }
+  renderMaintUI();
+  toast('Saatler sıfırlandı. Açılış 08:00, ilk çıkışta bas.');
+}
+function armBulkUndo(t, prev) {
+  if (bulkUndo && bulkUndo.timer) clearTimeout(bulkUndo.timer);
+  const ms = undoMs();
+  bulkUndo = { t, prev, expires: Date.now() + ms };
+  bulkUndo.timer = setTimeout(() => { bulkUndo = null; renderMaintUI(); }, ms);
+  renderMaintUI();
+}
+function doHepsiCikti() {
+  if (!lastMaintT() || CH.every(c => S.base[c] != null)) return;
+  const t = Date.now();
+  const prev = {};
+  CH.forEach(c => {
+    prev[c] = S.base[c] != null ? S.base[c] : null;
+    const L = S.log[c] = S.log[c] || [];
+    L.push({ t, dev: null, iv: S.interval });
+    if (L.length > 500) L.shift();
+    S.base[c] = t;
+    const ti = document.getElementById('t' + c);
+    if (ti) ti.value = hms(new Date(t));
+    reset(c);
+    renderLog(c);
+    armUndo(c, t, prev[c], false);
+  });
+  armBulkUndo(t, prev);
+  save();
+  renderMaintUI();
+  toast('Dört kanal aynı anda kuruldu');
+}
+function doBulkUndo() {
+  if (!bulkUndo || Date.now() >= bulkUndo.expires) return;
+  const t = bulkUndo.t;
+  CH.forEach(c => {
+    if (undo[c] && undo[c].t === t) doUndo(c);
+  });
+  if (bulkUndo && bulkUndo.timer) clearTimeout(bulkUndo.timer);
+  bulkUndo = null;
+  renderMaintUI();
+}
 function renderUndo(c) {
   const btn = document.getElementById('u' + c);
   if (!btn) return;
@@ -557,6 +725,7 @@ function doUndo(c) {
   renderLog(c);
   reset(c);
   save();
+  renderMaintUI();
   toast('Kanal ' + c + ': son basış geri alındı');
 }
 
@@ -572,6 +741,7 @@ function setTime(c, v) {
   }
   reset(c);
   save();
+  renderMaintUI();
 }
 
 g.addEventListener('click', e => {
@@ -597,6 +767,7 @@ g.addEventListener('click', e => {
     reset(c);
     save();
     armUndo(c, t, prevBase, false);
+    renderMaintUI();
   }
   if (b.dataset.ok) {
     touchPresAct();
@@ -628,6 +799,7 @@ g.addEventListener('click', e => {
     document.getElementById('t' + c).value = '';
     reset(c);
     save();
+    renderMaintUI();
   }
 });
 
@@ -670,7 +842,9 @@ document.getElementById('ntf').addEventListener('click', () => {
 
 // Kayıtlardan gerçek döngüyü bul: ilk ve son kayıt arası / tur sayısı
 function measure(c) {
-  const L = (S.log[c] || []);
+  let L = (S.log[c] || []).filter(x => x && x.t != null);
+  const cuts = maintList().map(x => x.t);
+  if (cuts.length) L = L.filter(x => x.t > cuts[cuts.length - 1]);
   if (L.length < 2) return null;
   const I = S.interval * 60000, a = L[0].t, z = L[L.length - 1].t;
   const k = Math.round((z - a) / I);
@@ -724,7 +898,7 @@ rsf.addEventListener('change', () => {
       reset(c); renderLog(c);
     });
     iv.value = S.interval; ld.value = S.lead; snd.checked = S.sound;
-    save(); toast('Yedek yüklendi');
+    save(); renderMaintUI(); toast('Yedek yüklendi');
   }).catch(() => toast('Yedek dosyası okunamadı'));
   rsf.value = '';
 });
@@ -812,6 +986,30 @@ document.getElementById('presBtn').addEventListener('click', () => {
   if (presOn) closePresence('click');
   else openPresence();
 });
+document.getElementById('maintBtn').addEventListener('click', () => {
+  touchPresAct();
+  openMaintModal();
+});
+document.getElementById('maintNo').addEventListener('click', closeMaintModal);
+document.getElementById('maintYes').addEventListener('click', () => {
+  closeMaintModal();
+  doMaintenance();
+});
+document.getElementById('maintModal').addEventListener('click', e => {
+  if (e.target.id === 'maintModal') closeMaintModal();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('maintModal').classList.contains('show')) closeMaintModal();
+});
+document.getElementById('hepsiBtn').addEventListener('click', () => {
+  touchPresAct();
+  doHepsiCikti();
+});
+document.getElementById('hepsiUndo').addEventListener('click', () => {
+  touchPresAct();
+  doBulkUndo();
+});
+renderMaintUI();
 startSync();
 setInterval(tick, 250);
 tick();
