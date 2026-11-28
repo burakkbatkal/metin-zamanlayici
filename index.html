@@ -59,6 +59,10 @@ button[data-clr],button[data-lc]{color:var(--mut)}
 button:focus-visible,input:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
 .row{display:flex;gap:6px;width:100%}
 .row button{flex:1;padding:6px 8px;font-size:.76rem}
+.undo{display:none;width:100%;margin:3px 0 0;padding:2px 6px;font-size:.7rem;font-weight:500;letter-spacing:.02em;background:transparent;border:none;color:var(--mut);box-shadow:none}
+.undo.show{display:block}
+.undo:hover{background:transparent;border:none;color:var(--gold2)}
+.undo:active{transform:none}
 .set{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;justify-content:center;margin-top:18px;padding:14px;border-radius:10px;color:var(--mut);font-size:.92rem;background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--bd)}
 .set input[type=number]{width:76px;text-align:center}
 .log{font-size:.8rem;color:var(--mut);margin-top:8px;font-variant-numeric:tabular-nums;max-height:110px;overflow:auto;position:relative;border-top:1px dashed var(--bd);padding-top:6px}
@@ -85,13 +89,13 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold2);outline-
 .pres-btn.on{background:linear-gradient(180deg,#7a5a22,#4e3814);border-color:var(--gold);color:#fff1c4;font-weight:700;box-shadow:0 0 12px rgba(212,167,74,.35)}
 .pres-count{color:var(--mut);font-size:.85rem;white-space:nowrap;user-select:none}
 .pres-count.is-zero{opacity:.4}
-@media (max-width:480px){main{padding:14px 10px 30px}.rem{font-size:2.6rem}.next{font-size:1rem;padding:10px 12px}.set label{flex:1 1 45%}.row button{padding:5px 6px}.hdr{flex-wrap:nowrap;gap:8px}.hdr h1{font-size:1.22rem;letter-spacing:.04em;flex:1;min-width:0;text-align:left}.pres-btn{padding:4px 9px;font-size:.72rem}}
+@media (max-width:480px){main{padding:14px 10px 30px}.rem{font-size:2.6rem}.next{font-size:1rem;padding:10px 12px}.set label{flex:1 1 45%}.row button{padding:5px 6px}.undo{font-size:.66rem;padding:1px 4px}.hdr{flex-wrap:nowrap;gap:8px}.hdr h1{font-size:1.22rem;letter-spacing:.04em;flex:1;min-width:0;text-align:left}.pres-btn{padding:4px 9px;font-size:.72rem}}
 </style>
 </head>
 <body>
 <main>
   <div class="hdr">
-    <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v7.6 · Ortak veri</small></h1>
+    <h1>Metin Zamanlayıcı <small style="font-size:.8rem;color:var(--mut)">v7.7 · Ortak veri</small></h1>
     <div class="pres">
       <button type="button" id="presBtn" class="pres-btn" aria-pressed="false">Oyunda değilim</button>
       <span class="pres-count is-zero" id="presCount" aria-live="polite">👥 0</span>
@@ -353,10 +357,21 @@ function applyRemote(v) {
   if (R.interval) S.interval = R.interval;
   if (R.lead != null) S.lead = R.lead;
   CH.forEach(c => {
-    const nb = R.base && R.base[c] != null ? R.base[c] : null;
+    const tb = tomb[c];
+    const tbLive = tb && Date.now() < tb.until;
+    let nb = R.base && R.base[c] != null ? R.base[c] : null;
+    if (tbLive && !tb.ok) nb = tb.prevBase != null ? tb.prevBase : null;
     const ob = S.base[c] != null ? S.base[c] : null;
     if (nb !== ob) { if (nb == null) delete S.base[c]; else S.base[c] = nb; reset(c); }
-    S.log[c] = Object.values((R.log && R.log[c]) || {}).sort((a, b) => a.t - b.t);
+    let logs = Object.values((R.log && R.log[c]) || {}).filter(x => x && x.t != null);
+    if (tbLive) logs = logs.filter(x => x.t !== tb.t);
+    S.log[c] = logs.sort((a, b) => a.t - b.t);
+    if (tbLive) {
+      const still = R.log && R.log[c] && R.log[c][tb.t];
+      const want = !tb.ok ? (tb.prevBase != null ? tb.prevBase : null) : null;
+      const baseWrong = !tb.ok && ((R.base && R.base[c] != null ? R.base[c] : null) !== want);
+      if (still || baseWrong) purgeLog(c, tb.t, want, !tb.ok);
+    }
     const ti = document.getElementById('t' + c);
     if (ti && document.activeElement !== ti) ti.value = S.base[c] != null ? hms(new Date(S.base[c])) : '';
     if (typeof renderLog === 'function') renderLog(c);
@@ -487,6 +502,7 @@ CH.forEach(c => {
     <div class="bar"><i id="p${c}"></i></div>
     <input type="time" step="1" id="t${c}" aria-label="CH${c} metin saati">
     <div class="row"><button data-now="${c}">Şimdi çıktı</button><button data-ok="${c}">Tuttu</button></div>
+    <button type="button" class="undo" data-undo="${c}" id="u${c}">↶ Geri al</button>
     <div class="cal" id="k${c}"></div>
     <details class="lgd"><summary>Kayıtlar</summary><div class="log" id="l${c}"></div></details>`;
   g.appendChild(d);
@@ -497,6 +513,52 @@ CH.forEach(c => {
 function reset(c) {
   nxt[c] = null;
   pre[c] = null;
+}
+
+const UNDO_MS = 120000;
+const undo = {}, tomb = {};
+function undoMs() { return window.__undoMs || UNDO_MS; }
+function renderUndo(c) {
+  const btn = document.getElementById('u' + c);
+  if (!btn) return;
+  const u = undo[c];
+  btn.classList.toggle('show', !!(u && Date.now() < u.expires));
+}
+function armUndo(c, t, prevBase, ok) {
+  if (undo[c] && undo[c].timer) clearTimeout(undo[c].timer);
+  const ms = undoMs();
+  undo[c] = { t, prevBase, ok: !!ok, expires: Date.now() + ms };
+  undo[c].timer = setTimeout(() => { delete undo[c]; renderUndo(c); }, ms);
+  renderUndo(c);
+}
+function purgeLog(c, t, baseVal, touchBase) {
+  if (!roomRef) return;
+  const upd = {};
+  upd['log/' + c + '/' + t] = null;
+  if (touchBase) upd['base/' + c] = baseVal != null ? baseVal : null;
+  roomRef.update(upd).catch(() => {});
+}
+function doUndo(c) {
+  const u = undo[c];
+  if (!u || Date.now() >= u.expires) return;
+  const L = S.log[c] || [];
+  const i = L.findIndex(x => x.t === u.t);
+  if (i >= 0) L.splice(i, 1);
+  if (!u.ok) {
+    if (u.prevBase != null) S.base[c] = u.prevBase;
+    else delete S.base[c];
+    const ti = document.getElementById('t' + c);
+    if (ti) ti.value = S.base[c] != null ? hms(new Date(S.base[c])) : '';
+  }
+  tomb[c] = { t: u.t, prevBase: u.prevBase, ok: u.ok, until: Date.now() + 10000 };
+  purgeLog(c, u.t, u.prevBase, !u.ok);
+  if (u.timer) clearTimeout(u.timer);
+  delete undo[c];
+  renderUndo(c);
+  renderLog(c);
+  reset(c);
+  save();
+  toast('Kanal ' + c + ': son basış geri alındı');
 }
 
 function setTime(c, v) {
@@ -520,6 +582,7 @@ g.addEventListener('click', e => {
     touchPresAct();
     const c = +b.dataset.now;
     const t = Date.now();
+    const prevBase = S.base[c] != null ? S.base[c] : null;
     const L = S.log[c] = S.log[c] || [];
     let dev = null;
     if (S.base[c] != null) {
@@ -534,6 +597,7 @@ g.addEventListener('click', e => {
     document.getElementById('t' + c).value = hms(new Date(S.base[c]));
     reset(c);
     save();
+    armUndo(c, t, prevBase, false);
   }
   if (b.dataset.ok) {
     touchPresAct();
@@ -546,8 +610,10 @@ g.addEventListener('click', e => {
     L.push({ t, dev: 0, iv: S.interval, ok: true });
     if (L.length > 500) L.shift();
     renderLog(c); save();
+    armUndo(c, t, S.base[c], true);
     toast('Kanal ' + c + ': tuttu olarak kaydedildi');
   }
+  if (b.dataset.undo) { touchPresAct(); doUndo(+b.dataset.undo); }
   if (b.dataset.lc) { const c = +b.dataset.lc; S.log[c] = []; renderLog(c); save(); }
   if (b.dataset.use) {
     const c = +b.dataset.use, m = measure(c);
